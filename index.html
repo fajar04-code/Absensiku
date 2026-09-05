@@ -763,6 +763,10 @@ body.login-locked>header,body.login-locked>main{visibility:visible!important}
                 <i class="fa-solid fa-gear"></i>
                 <span>Pengaturan</span>
             </button>
+            <button id="barcodeScanButton" onclick="openBarcodeScanner()" class="px-3 py-2 text-xs font-semibold rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 shadow-sm transition flex items-center gap-1.5" title="Scan barcode presensi">
+                <i class="fa-solid fa-camera"></i>
+                <span>Scan Barcode</span>
+            </button>
             <button id="resultsButton" onclick="openResultsSheet()" class="px-3 py-2 text-xs font-semibold rounded-xl bg-amber-500 text-white hover:bg-amber-600 shadow-sm transition flex items-center gap-1.5" title="Lihat hasil presensi"><i class="fa-solid fa-chart-pie"></i><span>Lihat Hasil</span></button>
             <div id="currentUserInfo" class="login-user-info"><i class="fa-solid fa-user-shield"></i><span id="currentUserName">-</span><span id="currentUserRole" class="uppercase"></span></div>
             <button id="logoutButton" onclick="logoutApp()" class="role-hidden px-3 py-2 text-xs font-semibold rounded-xl bg-rose-500 text-white hover:bg-rose-600 shadow-sm transition flex items-center gap-1.5" title="Keluar"><i class="fa-solid fa-right-from-bracket"></i><span>Keluar</span></button>
@@ -4958,6 +4962,20 @@ body.login-locked>header,body.login-locked>main{visibility:visible!important}
         </div>
         <p class="text-[10px] text-red-500 dark:text-red-300 mt-2">Menghapus kelas juga menghapus seluruh data siswa di dalam kelas tersebut.</p>
       </div>
+      <div class="barcode-settings-box">
+        <div class="barcode-settings-row">
+          <div>
+            <div class="barcode-settings-title"><i class="fa-solid fa-barcode"></i> Pengaturan Anti-Barcode Dobel</div>
+            <div class="barcode-settings-help">Barcode yang sama tidak akan dikirim ulang selama masih berada dalam riwayat barcode berhasil. Nilai minimum adalah <b>10 data berbeda</b>.</div>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="barcode-settings-badge"><i class="fa-solid fa-shield-halved"></i> Anti Duplikat</span>
+            <input id="barcodeDuplicateWindowInput" type="number" min="10" step="1" value="10" aria-label="Minimal data berbeda sebelum barcode boleh discan kembali">
+            <span class="text-[10px] font-bold text-slate-500 dark:text-slate-400">data berbeda</span>
+          </div>
+        </div>
+        <div class="barcode-settings-help" style="margin-top:8px">Contoh: dengan nilai 10, barcode A ditolak bila discan lagi sebelum 10 barcode berbeda berhasil masuk. Setelah 10 barcode berbeda masuk, barcode yang paling lama keluar dari riwayat dan dapat discan kembali.</div>
+      </div>
       <div class="sm:col-span-2 rounded-xl bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 p-3">
         <div class="flex items-center gap-2 mb-2 text-xs font-semibold text-gray-700 dark:text-gray-200"><i class="fa-solid fa-display text-indigo-500"></i> Tampilan Aplikasi</div>
         <div class="grid grid-cols-3 gap-2">
@@ -4973,6 +4991,19 @@ body.login-locked>header,body.login-locked>main{visibility:visible!important}
     </div></div>
   </div>
 </div>
+<style id="barcode-settings-ui">
+.barcode-settings-box{grid-column:1/-1;padding:13px 14px;border:1px solid #bfdbfe;border-radius:15px;background:linear-gradient(135deg,#eff6ff,#f8fafc)}
+.dark .barcode-settings-box{background:linear-gradient(135deg,#172554,#0f172a);border-color:#1e40af}
+.barcode-settings-row{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.barcode-settings-title{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:900;color:#1e3a8a}
+.dark .barcode-settings-title{color:#bfdbfe}
+.barcode-settings-help{margin-top:5px;font-size:10px;line-height:1.45;color:#64748b}
+.dark .barcode-settings-help{color:#94a3b8}
+#barcodeDuplicateWindowInput{width:95px;text-align:center;font-weight:900;border:1px solid #93c5fd;background:#fff;color:#0f172a}
+.dark #barcodeDuplicateWindowInput{background:#0f172a;color:#f8fafc;border-color:#3b82f6}
+.barcode-settings-badge{display:inline-flex;align-items:center;gap:5px;padding:5px 8px;border-radius:999px;background:#dbeafe;color:#1d4ed8;font-size:9px;font-weight:900}
+.dark .barcode-settings-badge{background:#1e3a8a;color:#bfdbfe}
+</style>
 <style id="settings-mobile-fix">
 .settings-view{min-height:42px!important;border-radius:11px!important;font-size:11px;font-weight:700}.settings-action{min-height:48px!important;border-radius:13px!important;display:flex;align-items:center;justify-content:center;gap:9px;font-size:12px;box-shadow:0 4px 12px rgba(15,23,42,.10)}
 body:not(.manage-data-mode) #studentListContainer button[title="Edit"],body:not(.manage-data-mode) #studentListContainer button[title="Hapus"]{display:none!important}
@@ -5070,6 +5101,491 @@ body:not(.manage-data-mode) #studentListContainer button[title="Edit"],body:not(
 #confirmModal .bg-sky-100{box-shadow:0 0 0 8px rgba(14,165,233,.08),0 10px 30px rgba(14,165,233,.12)}
 </style>
 
+
+
+<style id="barcode-scanner-style">
+/* =========================================================
+   SCANNER BARCODE PRESENSI — TAMBAHAN, TIDAK MENGUBAH DATA LAMA
+   ========================================================= */
+#barcodeScannerOverlay{position:fixed;inset:0;z-index:100000;display:none;align-items:center;justify-content:center;padding:14px;background:rgba(2,12,27,.78);backdrop-filter:blur(5px);-webkit-backdrop-filter:blur(5px)}
+#barcodeScannerCard{width:min(760px,100%);max-height:calc(100vh - 28px);overflow:auto;background:#fff;border-radius:22px;box-shadow:0 24px 70px rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.28)}
+.dark #barcodeScannerCard{background:#111827;color:#f8fafc;border-color:#374151}
+#barcodeScannerHead{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:14px 16px;border-bottom:1px solid #e5e7eb}
+.dark #barcodeScannerHead{border-color:#374151}
+#barcodeScannerTitle{font-size:15px;font-weight:900;display:flex;align-items:center;gap:9px}
+#barcodeScannerTitle i{color:#059669}
+#barcodeCameraWrap{position:relative;margin:14px;border-radius:18px;overflow:hidden;background:#020617;aspect-ratio:16/10;border:2px solid rgba(16,185,129,.35)}
+#barcodeVideo{display:block;width:100%;height:100%;object-fit:cover;background:#020617}
+#barcodeScanGuide{position:absolute;inset:13%;border:3px solid rgba(255,255,255,.9);border-radius:18px;box-shadow:0 0 0 200vmax rgba(2,12,27,.18);pointer-events:none}
+#barcodeScanGuide:after{content:"";position:absolute;left:8%;right:8%;top:50%;height:2px;background:linear-gradient(90deg,transparent,#10b981,transparent);box-shadow:0 0 14px rgba(16,185,129,.9);animation:barcodeScanLine 1.6s ease-in-out infinite}
+@keyframes barcodeScanLine{0%,100%{transform:translateY(-70px);opacity:.65}50%{transform:translateY(70px);opacity:1}}
+#barcodeCameraBadge{position:absolute;left:10px;bottom:10px;background:rgba(15,23,42,.72);color:#fff;border:1px solid rgba(255,255,255,.18);padding:6px 9px;border-radius:10px;font-size:10px;font-weight:800;backdrop-filter:blur(8px)}
+#barcodeScannerControls{padding:0 14px 14px;display:grid;grid-template-columns:1.6fr 1fr;gap:10px}
+#barcodeCameraSelect{width:100%;padding:10px 11px;border-radius:12px;border:1px solid #d1d5db;background:#fff;font-size:12px;font-weight:700;outline:none}
+.dark #barcodeCameraSelect{background:#0f172a;color:#f8fafc;border-color:#475569}
+.barcode-scanner-btn{border:0;border-radius:12px;padding:10px 12px;font-size:12px;font-weight:800;cursor:pointer;transition:.16s ease}
+.barcode-scanner-btn:hover{transform:translateY(-1px)}
+#barcodeScannerClose{background:#f1f5f9;color:#334155}
+.dark #barcodeScannerClose{background:#374151;color:#e5e7eb}
+#barcodeScannerRestart{background:#059669;color:white}
+#barcodeScannerStatus{margin:0 14px 14px;padding:10px 12px;border-radius:12px;font-size:12px;font-weight:800;background:#ecfdf5;color:#065f46;border:1px solid #a7f3d0}
+.dark #barcodeScannerStatus{background:#052e2b;color:#a7f3d0;border-color:#065f46}
+#barcodeLastScan{margin:0 14px 16px;padding:12px 13px;border-radius:14px;background:#f8fafc;border:1px solid #e5e7eb}
+.dark #barcodeLastScan{background:#0f172a;border-color:#374151}
+#barcodeLastScanLabel{font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:#94a3b8;font-weight:900}
+#barcodeLastScanValue{margin-top:4px;font-size:13px;font-weight:900;word-break:break-word}
+#barcodeScannerHint{padding:0 14px 16px;color:#64748b;font-size:10px;line-height:1.45}
+.dark #barcodeScannerHint{color:#94a3b8}
+@media(max-width:640px){#barcodeScannerOverlay{padding:8px}#barcodeScannerCard{max-height:calc(100vh - 16px);border-radius:18px}#barcodeCameraWrap{aspect-ratio:4/3;margin:10px}#barcodeScanGuide{inset:10% 6%}.barcode-scanner-btn{padding:9px}#barcodeScannerControls{padding:0 10px 10px;grid-template-columns:1fr}}
+</style>
+
+<div id="barcodeScannerOverlay" role="dialog" aria-modal="true" aria-label="Scan Barcode Presensi">
+  <div id="barcodeScannerCard">
+    <div id="barcodeScannerHead">
+      <div id="barcodeScannerTitle"><i class="fa-solid fa-qrcode"></i><span>Scan Barcode Presensi</span></div>
+      <button id="barcodeScannerClose" class="barcode-scanner-btn" type="button" onclick="closeBarcodeScanner()"><i class="fa-solid fa-xmark mr-1"></i>Tutup</button>
+    </div>
+    <div id="barcodeCameraWrap">
+      <video id="barcodeVideo" autoplay muted playsinline></video>
+      <div id="barcodeScanGuide"></div>
+      <div id="barcodeCameraBadge"><i class="fa-solid fa-video mr-1"></i><span id="barcodeCameraName">Kamera siap</span></div>
+    </div>
+    <div id="barcodeScannerControls">
+      <select id="barcodeCameraSelect" aria-label="Pilih kamera"></select>
+      <button id="barcodeScannerRestart" class="barcode-scanner-btn" type="button" onclick="restartBarcodeScanner()"><i class="fa-solid fa-camera-rotate mr-1"></i>Ganti / Buka Kamera</button>
+    </div>
+    <div id="barcodeScannerStatus">Mempersiapkan kamera...</div>
+    <div id="barcodeLastScan">
+      <div id="barcodeLastScanLabel">Scan terakhir</div>
+      <div id="barcodeLastScanValue">Belum ada barcode yang direkam.</div>
+    </div>
+    <div id="barcodeScannerHint">Arahkan barcode ke kotak. URL dari barcode dikirim apa adanya. Barcode yang sudah berhasil dikirim tidak akan dikirim ulang sampai minimal 10 data berbeda berhasil masuk. Barcode dobel menghasilkan bunyi gagal dan tidak dikirim.</div>
+  </div>
+</div>
+
+<script id="barcode-scanner-controller">
+/* =========================================================
+   BARCODE SCANNER — menggunakan data schoolData / selectedStudents
+   yang SUDAH ADA. Tidak menambah atau mengubah data siswa.
+   ========================================================= */
+const BARCODE_SCANNER_DEDUPE_MS = 1200;
+const BARCODE_SCAN_INTERVAL_MS = 90;
+const BARCODE_DUPLICATE_MIN = 10;
+const BARCODE_DUPLICATE_STORAGE_KEY = 'sman2_barcode_success_history_v1';
+let barcodeScannerStream = null;
+let barcodeScannerTimer = null;
+let barcodeScannerDetector = null;
+let barcodeScannerLibraryLoaded = false;
+let barcodeScannerZXingReader = null;
+let barcodeScannerZXingControls = null;
+let barcodeScannerOpen = false;
+let barcodeScannerBusy = false;
+let barcodeScannerLastValue = '';
+let barcodeScannerLastAt = 0;
+let barcodeScannerCurrentDeviceId = '';
+let barcodeScannerAudioContext = null;
+let barcodeScannerSuccessHistory = [];
+let barcodeScannerDuplicateWindow = BARCODE_DUPLICATE_MIN;
+
+function barcodeScannerLoadDuplicateSettings(){
+  try{
+    const saved=Number(localStorage.getItem('sman2_barcode_duplicate_window_v1'));
+    barcodeScannerDuplicateWindow=Math.max(BARCODE_DUPLICATE_MIN,Number.isFinite(saved)?Math.floor(saved):BARCODE_DUPLICATE_MIN);
+  }catch(e){ barcodeScannerDuplicateWindow=BARCODE_DUPLICATE_MIN; }
+  const input=document.getElementById('barcodeDuplicateWindowInput');
+  if(input)input.value=barcodeScannerDuplicateWindow;
+  barcodeScannerLoadSuccessHistory();
+}
+
+function barcodeScannerSaveDuplicateSettings(){
+  const input=document.getElementById('barcodeDuplicateWindowInput');
+  const value=Math.max(BARCODE_DUPLICATE_MIN,Math.floor(Number(input?.value)||BARCODE_DUPLICATE_MIN));
+  barcodeScannerDuplicateWindow=value;
+  if(input)input.value=value;
+  try{localStorage.setItem('sman2_barcode_duplicate_window_v1',String(value));}catch(e){}
+  barcodeScannerTrimSuccessHistory();
+  barcodeScannerPersistSuccessHistory();
+  barcodeScannerSetStatus('Pengaturan anti-duplikat disimpan: '+value+' data berbeda.','ok');
+}
+
+function barcodeScannerLoadSuccessHistory(){
+  try{
+    const raw=localStorage.getItem(BARCODE_DUPLICATE_STORAGE_KEY);
+    const arr=raw?JSON.parse(raw):[];
+    barcodeScannerSuccessHistory=Array.isArray(arr)?arr.filter(v=>typeof v==='string'):[];
+  }catch(e){ barcodeScannerSuccessHistory=[]; }
+  barcodeScannerTrimSuccessHistory();
+}
+
+function barcodeScannerPersistSuccessHistory(){
+  try{localStorage.setItem(BARCODE_DUPLICATE_STORAGE_KEY,JSON.stringify(barcodeScannerSuccessHistory));}catch(e){}
+}
+
+function barcodeScannerTrimSuccessHistory(){
+  if(!Array.isArray(barcodeScannerSuccessHistory))barcodeScannerSuccessHistory=[];
+  if(barcodeScannerSuccessHistory.length>barcodeScannerDuplicateWindow){
+    barcodeScannerSuccessHistory=barcodeScannerSuccessHistory.slice(-barcodeScannerDuplicateWindow);
+  }
+}
+
+function barcodeScannerIsDuplicate(raw){
+  return barcodeScannerSuccessHistory.includes(String(raw ?? ''));
+}
+
+function barcodeScannerRecordSuccess(raw){
+  const value=String(raw ?? '');
+  barcodeScannerSuccessHistory=barcodeScannerSuccessHistory.filter(v=>v!==value);
+  barcodeScannerSuccessHistory.push(value);
+  barcodeScannerTrimSuccessHistory();
+  barcodeScannerPersistSuccessHistory();
+}
+
+function barcodeScannerHistoryCount(){
+  return barcodeScannerSuccessHistory.length;
+}
+
+function barcodeScannerPlayDuplicateBeep(){
+  try{
+    if(!barcodeScannerPrepareAudio())return;
+    const ctx=barcodeScannerAudioContext;
+    const master=ctx.createGain();
+    master.gain.setValueAtTime(0.0001,ctx.currentTime);
+    master.gain.exponentialRampToValueAtTime(0.78,ctx.currentTime+0.008);
+    master.connect(ctx.destination);
+    const playTone=(start,duration,freq)=>{
+      const osc=ctx.createOscillator();
+      const gain=ctx.createGain();
+      osc.type='sawtooth';
+      osc.frequency.setValueAtTime(freq,start);
+      gain.gain.setValueAtTime(0.0001,start);
+      gain.gain.exponentialRampToValueAtTime(0.55,start+0.008);
+      gain.gain.exponentialRampToValueAtTime(0.0001,start+duration);
+      osc.connect(gain);gain.connect(master);
+      osc.start(start);osc.stop(start+duration+0.01);
+      osc.onended=()=>{try{osc.disconnect();gain.disconnect()}catch(e){}};
+    };
+    const now=ctx.currentTime;
+    playTone(now,0.18,520);
+    playTone(now+0.20,0.23,330);
+    setTimeout(()=>{try{master.disconnect()}catch(e){}},500);
+  }catch(e){}
+  try{if(typeof navigator.vibrate==='function')navigator.vibrate([160,70,90]);}catch(e){}
+}
+
+function barcodeScannerSetStatus(text, type='ok'){
+  const el=document.getElementById('barcodeScannerStatus');
+  if(!el)return;
+  el.textContent=text;
+  if(type==='error'){
+    el.style.background='#fef2f2';el.style.color='#991b1b';el.style.borderColor='#fecaca';
+  }else if(type==='wait'){
+    el.style.background='#eff6ff';el.style.color='#1d4ed8';el.style.borderColor='#bfdbfe';
+  }else{
+    el.style.background='';el.style.color='';el.style.borderColor='';
+  }
+}
+
+function barcodeScannerSetLast(value, label='Barcode direkam'){
+  const el=document.getElementById('barcodeLastScanValue');
+  if(el)el.textContent=label+': '+String(value);
+}
+
+function barcodeScannerPrepareAudio(){
+  try{
+    const AudioCtx=window.AudioContext||window.webkitAudioContext;
+    if(!AudioCtx)return false;
+    if(!barcodeScannerAudioContext) barcodeScannerAudioContext=new AudioCtx();
+    if(barcodeScannerAudioContext.state==='suspended') barcodeScannerAudioContext.resume().catch(()=>{});
+    return true;
+  }catch(e){ return false; }
+}
+
+function barcodeScannerPlayBeep(){
+  // Bunyi konfirmasi lebih keras + pola dua nada agar jelas terdengar.
+  try{
+    if(!barcodeScannerPrepareAudio())return;
+    const ctx=barcodeScannerAudioContext;
+    if(ctx.state==='suspended')ctx.resume().catch(()=>{});
+    const master=ctx.createGain();
+    const comp=ctx.createDynamicsCompressor();
+    master.gain.setValueAtTime(0.0001,ctx.currentTime);
+    master.gain.exponentialRampToValueAtTime(0.92,ctx.currentTime+0.008);
+    master.connect(comp);
+    comp.connect(ctx.destination);
+
+    const playTone=(start,duration,f1,f2)=>{
+      const osc=ctx.createOscillator();
+      const gain=ctx.createGain();
+      osc.type='square';
+      osc.frequency.setValueAtTime(f1,start);
+      osc.frequency.exponentialRampToValueAtTime(f2,start+0.035);
+      gain.gain.setValueAtTime(0.0001,start);
+      gain.gain.exponentialRampToValueAtTime(0.8,start+0.006);
+      gain.gain.setValueAtTime(0.62,start+duration-0.018);
+      gain.gain.exponentialRampToValueAtTime(0.0001,start+duration);
+      osc.connect(gain);
+      gain.connect(master);
+      osc.start(start);
+      osc.stop(start+duration+0.01);
+      osc.onended=()=>{try{osc.disconnect();gain.disconnect()}catch(e){}};
+    };
+
+    const now=ctx.currentTime;
+    playTone(now,0.13,920,1450);
+    playTone(now+0.16,0.16,1120,1750);
+    setTimeout(()=>{try{master.gain.exponentialRampToValueAtTime(0.0001,ctx.currentTime+0.025);master.disconnect();comp.disconnect()}catch(e){}},380);
+  }catch(e){}
+
+  // Getaran: tersedia pada browser/perangkat yang mendukung Vibration API.
+  try{
+    if(typeof navigator.vibrate==='function'){
+      navigator.vibrate([90,45,140]);
+    }
+  }catch(e){}
+}
+
+async function barcodeScannerEnsureZXing(){
+  if(window.ZXingBrowser && window.ZXingBrowser.BrowserMultiFormatReader){ barcodeScannerLibraryLoaded=true; return true; }
+  return new Promise((resolve)=>{
+    const existing=document.querySelector('script[data-barcode-zxing="1"]');
+    if(existing){existing.addEventListener('load',()=>{barcodeScannerLibraryLoaded=true;resolve(true)});existing.addEventListener('error',()=>resolve(false));return;}
+    const script=document.createElement('script');
+    script.src='https://unpkg.com/@zxing/browser@0.1.5/umd/zxing-browser.min.js';
+    script.async=true;script.dataset.barcodeZxing='1';
+    script.onload=()=>{barcodeScannerLibraryLoaded=true;resolve(!!window.ZXingBrowser)};
+    script.onerror=()=>resolve(false);
+    document.head.appendChild(script);
+  });
+}
+
+async function barcodeScannerEnumerateCameras(){
+  const select=document.getElementById('barcodeCameraSelect');
+  if(!select||!navigator.mediaDevices?.enumerateDevices)return [];
+  try{
+    const devices=await navigator.mediaDevices.enumerateDevices();
+    const cams=devices.filter(d=>d.kind==='videoinput');
+    select.innerHTML='';
+    cams.forEach((d,i)=>{
+      const opt=document.createElement('option');
+      opt.value=d.deviceId;
+      opt.textContent=d.label || `Kamera ${i+1}`;
+      select.appendChild(opt);
+    });
+    if(barcodeScannerCurrentDeviceId && cams.some(c=>c.deviceId===barcodeScannerCurrentDeviceId))select.value=barcodeScannerCurrentDeviceId;
+    return cams;
+  }catch(e){
+    barcodeScannerSetStatus('Tidak dapat membaca daftar kamera.', 'error');
+    return [];
+  }
+}
+
+function barcodeScannerStopCamera(){
+  if(barcodeScannerTimer){clearInterval(barcodeScannerTimer);barcodeScannerTimer=null;}
+  if(barcodeScannerZXingControls){try{barcodeScannerZXingControls.stop();}catch(e){} barcodeScannerZXingControls=null;}
+  if(barcodeScannerStream){barcodeScannerStream.getTracks().forEach(t=>{try{t.stop()}catch(e){}});barcodeScannerStream=null;}
+  barcodeScannerBusy=false;
+}
+
+async function barcodeScannerOpenCamera(deviceId=''){
+  if(!barcodeScannerOpen)return;
+  barcodeScannerStopCamera();
+  const video=document.getElementById('barcodeVideo');
+  if(!video){return;}
+  barcodeScannerSetStatus('Meminta akses kamera...', 'wait');
+  try{
+    const constraints=deviceId
+      ? {audio:false,video:{deviceId:{exact:deviceId},width:{ideal:1280},height:{ideal:720}}}
+      : {audio:false,video:{facingMode:{ideal:'environment'},width:{ideal:1280},height:{ideal:720}}};
+    barcodeScannerStream=await navigator.mediaDevices.getUserMedia(constraints);
+    video.srcObject=barcodeScannerStream;
+    await video.play();
+    const track=barcodeScannerStream.getVideoTracks()[0];
+    barcodeScannerCurrentDeviceId=track?.getSettings?.().deviceId || deviceId || '';
+    await barcodeScannerEnumerateCameras();
+    const label=track?.label || document.getElementById('barcodeCameraSelect')?.selectedOptions?.[0]?.textContent || 'Kamera';
+    const badge=document.getElementById('barcodeCameraName');if(badge)badge.textContent=label;
+    barcodeScannerSetStatus('Kamera aktif — arahkan barcode ke kotak scan.');
+    if('BarcodeDetector' in window){
+      try{
+        const wanted=['code_128','ean_13','ean_8','upc_a','upc_e','code_39','code_93','itf','codabar','qr_code'];
+        barcodeScannerDetector=new BarcodeDetector({formats:wanted});
+      }catch(e){barcodeScannerDetector=new BarcodeDetector();}
+    }else{
+      barcodeScannerDetector=null;
+    }
+    barcodeScannerStartLoop();
+  }catch(err){
+    const msg=err?.name==='NotAllowedError' ? 'Izin kamera ditolak. Izinkan kamera pada browser.' :
+      err?.name==='NotFoundError' ? 'Kamera tidak ditemukan. Hubungkan kamera USB/webcam lalu coba lagi.' :
+      err?.message || 'Kamera tidak dapat dibuka.';
+    barcodeScannerSetStatus(msg,'error');
+  }
+}
+
+function barcodeScannerStartLoop(){
+  if(barcodeScannerTimer)clearInterval(barcodeScannerTimer);
+  barcodeScannerTimer=setInterval(barcodeScannerTick,BARCODE_SCAN_INTERVAL_MS);
+}
+
+async function barcodeScannerTick(){
+  if(!barcodeScannerOpen || barcodeScannerBusy)return;
+  const video=document.getElementById('barcodeVideo');
+  if(!video || video.readyState<2 || video.videoWidth===0)return;
+  try{
+    if(barcodeScannerDetector){
+      const results=await barcodeScannerDetector.detect(video);
+      if(results?.length){
+        const raw=String(results[0].rawValue||'').trim();
+        if(raw)await barcodeScannerHandleDetected(raw);
+        return;
+      }
+    }
+  }catch(e){
+    // Lanjut ke fallback ZXing bila BarcodeDetector gagal.
+  }
+  if(!barcodeScannerDetector && barcodeScannerLibraryLoaded===false){
+    const ok=await barcodeScannerEnsureZXing();
+    if(ok)barcodeScannerStartZXing();
+  }
+}
+
+function barcodeScannerStartZXing(){
+  if(!barcodeScannerOpen || barcodeScannerZXingReader || !window.ZXingBrowser?.BrowserMultiFormatReader)return;
+  try{
+    barcodeScannerZXingReader=new ZXingBrowser.BrowserMultiFormatReader();
+    const video=document.getElementById('barcodeVideo');
+    barcodeScannerZXingControls=barcodeScannerZXingReader.decodeFromVideoElement(video,(result,err)=>{
+      if(result){
+        const raw=String(result.getText?.()||result.text||'').trim();
+        if(raw)barcodeScannerHandleDetected(raw);
+      }
+    });
+  }catch(e){barcodeScannerSetStatus('Scanner barcode tidak tersedia di browser ini.','error');}
+}
+
+function barcodeScannerFindStudent(raw){
+  const norm=String(raw).trim();
+  if(!norm)return null;
+  const candidates=[];
+  for(const className of Object.keys(schoolData||{})){
+    for(const student of (schoolData[className]||[]))candidates.push({student,className});
+  }
+  // Cocokkan nilai barcode dengan NIS, NISN, nama, atau URL siswa yang memang sudah tersimpan.
+  let hit=candidates.find(x=>String(x.student.id??'').trim()===norm);
+  if(hit)return hit;
+  hit=candidates.find(x=>String(x.student.nisn??'').trim()===norm);
+  if(hit)return hit;
+  hit=candidates.find(x=>String(x.student.name??'').trim().toLowerCase()===norm.toLowerCase());
+  if(hit)return hit;
+  hit=candidates.find(x=>String(x.student.link??'').trim()===norm);
+  if(hit)return hit;
+  // Bila scanner memberi URL form yang memuat nama siswa, tetap coba cocokkan tautan.
+  try{
+    const u=new URL(norm);
+    const nameEntries=[];
+    for(const key of u.searchParams.keys()){
+      const val=u.searchParams.get(key)||'';
+      if(val)nameEntries.push(decodeURIComponent(val.replace(/\+/g,' ')).trim().toLowerCase());
+    }
+    hit=candidates.find(x=>nameEntries.includes(String(x.student.name??'').trim().toLowerCase()));
+    if(hit)return hit;
+  }catch(e){}
+  return null;
+}
+
+async function barcodeScannerSendRaw(raw){
+  // PENTING: barcode URL dikirim PERSIS seperti hasil scan.
+  // Tidak dicari ke database, tidak diganti link siswa, dan tidak diubah query/parameternya.
+  const link=String(raw ?? '');
+  if(!/^https?:\/\//i.test(link))return false;
+  try{
+    await fetch(link,{method:'GET',mode:'no-cors',cache:'no-store',keepalive:true});
+    return true;
+  }catch(e){
+    try{const img=new Image();img.src=link;return true}catch(x){return false}
+  }
+}
+
+async function barcodeScannerHandleDetected(raw){
+  const now=Date.now();
+  const rawBarcode=String(raw ?? '');
+  if(barcodeScannerBusy)return;
+  if(rawBarcode===barcodeScannerLastValue && now-barcodeScannerLastAt<BARCODE_SCANNER_DEDUPE_MS)return;
+  barcodeScannerLastValue=rawBarcode;barcodeScannerLastAt=now;
+
+  // Anti-duplikat: hanya barcode yang BERHASIL dikirim yang masuk riwayat.
+  // Barcode yang sama ditolak sampai minimal N barcode berbeda berhasil masuk.
+  if(barcodeScannerIsDuplicate(rawBarcode)){
+    barcodeScannerSetLast(rawBarcode,'Duplikat — tidak dikirim');
+    barcodeScannerSetStatus('✕ Barcode dobel. Tidak dikirim ulang. Tunggu sampai '+barcodeScannerDuplicateWindow+' data berbeda berhasil masuk.','error');
+    barcodeScannerPlayDuplicateBeep();
+    return;
+  }
+
+  barcodeScannerBusy=true;
+  barcodeScannerSetLast(rawBarcode,'Barcode direkam');
+  barcodeScannerSetStatus('Barcode terbaca — mengirim tautan asli secara otomatis...', 'wait');
+
+  // Tidak ada pencocokan ke schoolData untuk URL barcode.
+  // Nilai URL dari barcode menjadi tautan yang langsung dikirim.
+  const ok=await barcodeScannerSendRaw(rawBarcode);
+  if(ok){
+    barcodeScannerRecordSuccess(rawBarcode);
+    barcodeScannerPlayBeep();
+    barcodeScannerSetLast(rawBarcode,'Berhasil terkirim');
+    barcodeScannerSetStatus('✓ Berhasil dikirim. Riwayat anti-duplikat: '+barcodeScannerHistoryCount()+'/'+barcodeScannerDuplicateWindow+'. Siap scan berikutnya.');
+  }else{
+    barcodeScannerSetLast(rawBarcode,'Gagal mengirim');
+    barcodeScannerSetStatus('Barcode terbaca, tetapi isinya bukan tautan HTTP/HTTPS yang dapat dikirim. Kamera tetap aktif.','error');
+  }
+  barcodeScannerBusy=false;
+}
+
+async function openBarcodeScanner(){
+  // Aktifkan audio dalam gesture klik pengguna agar browser Windows/Chrome/Edge
+  // mengizinkan bunyi otomatis saat barcode berhasil diproses.
+  barcodeScannerPrepareAudio();
+  const overlay=document.getElementById('barcodeScannerOverlay');
+  if(!overlay)return;
+  overlay.style.display='flex';
+  document.body.style.overflow='hidden';
+  barcodeScannerOpen=true;
+  barcodeScannerLastValue='';barcodeScannerLastAt=0;
+  barcodeScannerLoadDuplicateSettings();
+  barcodeScannerSetLast('Riwayat: '+barcodeScannerHistoryCount()+' / '+barcodeScannerDuplicateWindow+' data berbeda.','Status');
+  barcodeScannerSetStatus('Mempersiapkan kamera...','wait');
+  if(!navigator.mediaDevices?.getUserMedia){barcodeScannerSetStatus('Browser ini tidak mendukung akses kamera. Gunakan Chrome/Edge.','error');return;}
+  await barcodeScannerEnsureZXing();
+  await barcodeScannerOpenCamera(barcodeScannerCurrentDeviceId);
+  if(!barcodeScannerDetector)barcodeScannerStartZXing();
+}
+
+function closeBarcodeScanner(){
+  barcodeScannerOpen=false;
+  barcodeScannerStopCamera();
+  barcodeScannerDetector=null;
+  barcodeScannerZXingReader=null;
+  const overlay=document.getElementById('barcodeScannerOverlay');if(overlay)overlay.style.display='none';
+  document.body.style.overflow='';
+  if(barcodeScannerAudioContext && barcodeScannerAudioContext.state==='running'){
+    barcodeScannerAudioContext.suspend().catch(()=>{});
+  }
+}
+
+async function restartBarcodeScanner(){
+  const select=document.getElementById('barcodeCameraSelect');
+  const id=select?.value||'';
+  barcodeScannerCurrentDeviceId=id;
+  await barcodeScannerOpenCamera(id);
+}
+
+document.addEventListener('change',e=>{
+  if(e.target?.id==='barcodeCameraSelect' && barcodeScannerOpen)restartBarcodeScanner();
+  if(e.target?.id==='barcodeDuplicateWindowInput')barcodeScannerSaveDuplicateSettings();
+});
+window.addEventListener('DOMContentLoaded',()=>barcodeScannerLoadDuplicateSettings());
+window.addEventListener('pagehide',()=>barcodeScannerStopCamera());
+</script>
 
 <!-- HASIL PRESENSI: ditampilkan langsung dari Google Spreadsheet -->
 <style id="results-frame-fast-style">
